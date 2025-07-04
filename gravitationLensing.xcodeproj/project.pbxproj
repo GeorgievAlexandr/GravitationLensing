@@ -41,10 +41,18 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		E2B68DAF2E1712FD00644386 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		E2C8CDA02E1195FF0060B197 = {
 			isa = PBXGroup;
 			children = (
 				E2C8CDAB2E1195FF0060B197 /* gravitationLensing */,
+				E2B68DAF2E1712FD00644386 /* Frameworks */,
 				E2C8CDAA2E1195FF0060B197 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -245,6 +253,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				"LIBRARY_SEARCH_PATHS[arch=*]" = usr/Cellar/;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
