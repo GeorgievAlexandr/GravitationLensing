@@ -12,22 +12,23 @@
 #include "stb_image_write.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#include <string>
 using namespace std;
 
 
 
 struct vec3 {
     public:
-        float x;
-        float y;
-        float z;
+        double x;
+        double y;
+        double z;
     vec3(){};
-    vec3(const float ix, const float iy, const float iz){
+    vec3(const double ix, const double iy, const double iz){
         x = ix;
         y = iy;
         z = iz;
     }
-    float length(){
+    double length(){
         return sqrt(x*x + y*y + z*z);
     }
     vec3 operator +(const vec3& v){
@@ -49,7 +50,7 @@ struct vec3 {
         float l = this->length();
         return (*this)/l;
     }
-    float scalarMultiply(vec3 v){
+    double scalarMultiply(vec3 v){
         return x*v.x + y*v.y + z*v.z;
     }
     void print(){
@@ -58,14 +59,14 @@ struct vec3 {
 };
 struct vec2 {
     public:
-        float x;
-        float y;
+        double x;
+        double y;
     vec2(){};
-    vec2(const float ix, const float iy){
+    vec2(const double ix, const double iy){
         x = ix;
         y = iy;
     }
-    float length(){
+    double length(){
         return sqrt(x*x + y*y);
     }
     vec2 operator +(const vec2& v){
@@ -100,15 +101,20 @@ struct Ray{
     Ray();
 };
 
-float massInside(float r){
-    return 2e5;
+double massInside(const double& r, const double& mass, const double& limr){
+    if (r<limr){
+        return r*mass;
+    }
+    else{
+        return mass*limr;
+    }
 }
 
-float zPlaneDist(const float z, vec3& pos){
+double zPlaneDist(const double z, vec3& pos){
     return z-pos.z;
 }
 
-float minf(const float& a, const float& b){
+double minf(const double& a, const double& b){
     if (a<b){
         return a;
     }
@@ -118,19 +124,19 @@ float minf(const float& a, const float& b){
 }
 
 
-vec2 rayMarch(const Ray& ray, vec3& massCoord){
+vec2 rayMarch(const Ray& ray, vec3& massCoord, const double& mass, const double& limr){
     vec3 pos = ray.startPosition;
     vec3 vel = ray.startDirection;
-    const float step = 0.1f;
-    float dT = step;
+    const double step = 0.1f;
+    double dT = step;
     for (int i = 0; i < 200; i++){
-        float zpd = zPlaneDist(2, pos);
+        double zpd = zPlaneDist(47.58, pos);
         if (zpd < 1.5*step){
             break;
         }
-        dT = minf(zpd, step);
-        float r = (pos-massCoord).length();
-        vel += (massCoord-pos)*(dT * massInside(r)/(r*r*r));
+        double r = (pos-massCoord).length();
+        dT = minf(zpd, step*r);
+        vel += (massCoord-pos)*(dT * massInside(r, mass, limr)/(r*r*r));
         //((massCoord-pos)*(dT * massInside(r)/(r*r*r))).print();
         pos += vel*dT;
     }
@@ -203,21 +209,21 @@ std::vector<std::vector<RGB>> load_png(const char* filename) {
     return pixels;
 }
 
-void fixImage(const int xGravCentre, const int yGravCentre, const char* inImagePatch, const char* outImagePatch){
+void fixImage(const int xGravCentre, const int yGravCentre, const double& mass, const double& limr, const char* inImagePatch, const char* outImagePatch){
     std::vector<std::vector<RGB>> inImage = load_png(inImagePatch);
     const int width = inImage[0].size();
     const int height = inImage.size();
     std::vector<std::vector<RGB>> outImage = load_png(inImagePatch);
-    const float scale = 1;
-    vec3 gravCentre(float(xGravCentre)*scale, float(yGravCentre)*scale, 1);
+    const float scale = 3e-4;
+    vec3 gravCentre(float(xGravCentre-width*0.5)*scale, float(yGravCentre-height*0.5)*scale, 38.665);
     for (int x = 0; x < width; x++){
         for (int y = 0; y < height; y++){
             outImage[y][x] = {0, 0, 0};
-            vec3 dir(0,0,1);
-            Ray pixRay(vec3(float(x)*scale, float(y)*scale , 0), dir);
-            vec2 outPixCoord = rayMarch(pixRay, gravCentre);
-            int outX = round(outPixCoord.x / scale);
-            int outY = round(outPixCoord.y / scale);
+            vec3 dir(float(x - width*0.5)*scale, float(y-height*0.5)*scale , 8.9);
+            Ray pixRay(vec3(0, 0, 0), dir.normalize());
+            vec2 outPixCoord = rayMarch(pixRay, gravCentre, mass, limr);
+            int outX = round(outPixCoord.x*0.187 / scale+width*0.5);
+            int outY = round(outPixCoord.y*0.187 / scale+height*0.5);
             if(outX < 0){
                 outX = 0;
             }
@@ -230,7 +236,7 @@ void fixImage(const int xGravCentre, const int yGravCentre, const char* inImageP
             if(outY >= height){
                 outY = height-1;
             }
-            outImage[outY][outX] = inImage[y][x];
+            outImage[y][x] = inImage[outY][outX];
         }
     }
     save_png(outImage, outImagePatch);
@@ -238,7 +244,13 @@ void fixImage(const int xGravCentre, const int yGravCentre, const char* inImageP
 }
 
 int main(int argc, const char * argv[]) {
-    fixImage(464, 363, "/Users/aleksandrgeorgiev/Desktop/dev/gravitationLensing/gravitationLensing/input.png", "/Users/aleksandrgeorgiev/Desktop/dev/gravitationLensing/gravitationLensing/output.png");
+    for (int i = 1; i < 50; i++){
+        string outPatchStr = ("/Users/aleksandrgeorgiev/Desktop/dev/gravitationLensing/gravitationLensing/seq/output"+to_string(i)+".png");
+        char outPatch[outPatchStr.size()];
+        strcpy(outPatch, outPatchStr.c_str());
+        std::cout<< outPatch << endl;
+        fixImage(390, 500, 1/(1 +0.3*i), i*10e-4, "/Users/aleksandrgeorgiev/Desktop/dev/gravitationLensing/gravitationLensing/input.png", outPatch);
+    }
     return 0;
 }
  
